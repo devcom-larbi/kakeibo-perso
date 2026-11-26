@@ -6,6 +6,8 @@ import { centsToInput, formatMoneyShort, parseMoney } from '../lib/money'
 import { currentMonthKey, monthLabel, todayISO } from '../lib/dates'
 import { monthlyNeeded, savedFor } from '../lib/goals'
 import { useStore } from '../store'
+import { feedback } from '../lib/feedback'
+import { useShake } from './useShake'
 
 interface GoalSheetProps {
   /** Objectif à modifier, ou null pour en créer un */
@@ -21,6 +23,11 @@ export function GoalSheet({ goal, onClose }: GoalSheetProps) {
   const [deadline, setDeadline] = useState(goal?.deadline ?? '')
   const [initial, setInitial] = useState('')
   const [error, setError] = useState('')
+  const [errorRef, shakeError] = useShake<HTMLParagraphElement>()
+  const fail = (message: string) => {
+    setError(message)
+    shakeError()
+  }
 
   const nowKey = currentMonthKey()
   const targetCents = parseMoney(target)
@@ -45,15 +52,16 @@ export function GoalSheet({ goal, onClose }: GoalSheetProps) {
 
   const submit = (e: FormEvent) => {
     e.preventDefault()
-    if (!name.trim()) return setError('Donne un nom à ton objectif, par exemple « Japon en avril ».')
-    if (!targetCents || targetCents <= 0) return setError('Indique le montant à atteindre, par exemple 2 500.')
-    if (deadline && !validDeadline) return setError('Choisis un mois valide, ou laisse la date vide.')
-    if (validDeadline && validDeadline < nowKey && !goal) return setError('Choisis un mois à venir, ou laisse la date vide.')
-    if (initial && parseMoney(initial) === null) return setError('Le montant déjà de côté doit être un nombre, par exemple 300.')
+    if (!name.trim()) return fail('Donne un nom à ton objectif, par exemple « Japon en avril ».')
+    if (!targetCents || targetCents <= 0) return fail('Indique le montant à atteindre, par exemple 2 500.')
+    if (deadline && !validDeadline) return fail('Choisis un mois valide, ou laisse la date vide.')
+    if (validDeadline && validDeadline < nowKey && !goal) return fail('Choisis un mois à venir, ou laisse la date vide.')
+    if (initial && parseMoney(initial) === null) return fail('Le montant déjà de côté doit être un nombre, par exemple 300.')
 
     const fields = { name: name.trim(), kind, target: targetCents, deadline: validDeadline }
     if (goal) updateGoal(goal.id, fields)
     else addGoal(fields, initialCents > 0 ? { amount: initialCents, date: todayISO(), note: 'Déjà de côté' } : null)
+    feedback.emit({ kind: 'toast', title: goal ? 'Objectif modifié' : 'Objectif créé', detail: fields.name })
     onClose()
   }
 
@@ -140,7 +148,7 @@ export function GoalSheet({ goal, onClose }: GoalSheetProps) {
         )}
 
         {error && (
-          <p className="form-error" role="alert">
+          <p className="form-error" role="alert" ref={errorRef}>
             {error}
           </p>
         )}

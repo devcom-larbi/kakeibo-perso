@@ -6,6 +6,8 @@ import { formatMoney, formatMoneyShort } from '../lib/money'
 import { currentMonthKey, shortDayLabel } from '../lib/dates'
 import { deadlineText, isReached, monthlyNeeded, progressOf, remainingFor, savedFor } from '../lib/goals'
 import { useStore } from '../store'
+import { feedback } from '../lib/feedback'
+import { Rolling } from './Rolling'
 
 interface GoalDetailSheetProps {
   goal: Goal
@@ -28,7 +30,7 @@ export function GoalDetailSheet({ goal, onClose, onEdit, onContribute }: GoalDet
     <Sheet title={goal.name} onClose={onClose}>
       <div className="goal-detail">
         <p className="goal-detail-amount">
-          {formatMoney(saved)} <span>sur {formatMoney(goal.target)}</span>
+          <Rolling value={saved} id={`detail-${goal.id}`} /> <span>sur {formatMoney(goal.target)}</span>
         </p>
         <span className="goal-bar large" aria-hidden="true">
           <span style={{ width: `${progressOf(goal) * 100}%` }} />
@@ -89,7 +91,14 @@ export function GoalDetailSheet({ goal, onClose, onEdit, onContribute }: GoalDet
           <button
             type="button"
             className="secondary-button"
-            onClick={() => updateGoal(goal.id, { doneAt: goal.doneAt ? null : Date.now() })}
+            onClick={() => {
+              updateGoal(goal.id, { doneAt: goal.doneAt ? null : Date.now() })
+              feedback.emit(
+                goal.doneAt
+                  ? { kind: 'toast', title: 'Objectif remis en cours', detail: goal.name, tone: 'neutral' }
+                  : { kind: 'hanko', title: 'Objectif réalisé', detail: goal.name },
+              )
+            }}
           >
             {goal.doneAt ? 'Remettre en cours' : 'Marquer comme réalisé'}
           </button>
@@ -99,6 +108,7 @@ export function GoalDetailSheet({ goal, onClose, onEdit, onContribute }: GoalDet
             onClick={() => {
               if (!confirmDelete) return setConfirmDelete(true)
               deleteGoal(goal.id)
+              feedback.emit({ kind: 'toast', title: 'Objectif supprimé', detail: goal.name, tone: 'neutral' })
               onClose()
             }}
           >

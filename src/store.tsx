@@ -3,6 +3,7 @@ import {
   emptyData,
   emptyPlan,
   newId,
+  ACTIVITIES,
   CATEGORY_IDS,
   GOAL_KINDS,
   type AppData,
@@ -11,14 +12,34 @@ import {
   type Goal,
   type LineItem,
   type MonthPlan,
+  type ProSettings,
+  type Settings,
 } from './lib/types'
 import { planFromPrevious } from './lib/budget'
 
 const STORAGE_KEY = 'kakeibo-perso:v1'
 
-function isLineItem(x: unknown): x is LineItem {
-  const i = x as LineItem
-  return !!i && typeof i.id === 'string' && typeof i.label === 'string' && Number.isFinite(i.amount)
+function parseLines(raw: unknown): LineItem[] {
+  if (!Array.isArray(raw)) return []
+  return raw.flatMap((x) => {
+    const i = x as LineItem
+    if (!i || typeof i.id !== 'string' || typeof i.label !== 'string' || !Number.isFinite(i.amount)) return []
+    const line: LineItem = { id: i.id, label: i.label, amount: i.amount }
+    if (i.pro === true) line.pro = true
+    if (typeof i.catalogId === 'string') line.catalogId = i.catalogId
+    return [line]
+  })
+}
+
+function parseSettings(raw: unknown): Settings {
+  const r = raw as Settings | undefined
+  const seen = typeof r?.reviewSeen === 'string' && /^\d{4}-\d{2}$/.test(r.reviewSeen) ? { reviewSeen: r.reviewSeen } : {}
+  const p = r?.pro as ProSettings | null | undefined
+  if (!p || !ACTIVITIES.some((a) => a.id === p.activity) || !Number.isFinite(p.rate)) return { pro: null, ...seen }
+  return {
+    pro: { activity: p.activity, rate: Math.min(Math.max(Math.round(p.rate), 0), 10000), liberatoire: p.liberatoire === true },
+    ...seen,
+  }
 }
 
 /** Vérifie qu'un objet (localStorage ou fichier importé) a bien la forme attendue. */
@@ -39,14 +60,14 @@ export function parseAppData(raw: unknown): AppData | null {
   for (const [key, p] of Object.entries(d.months)) {
     if (!/^\d{4}-\d{2}$/.test(key) || !p) continue
     months[key] = {
-      incomes: Array.isArray(p.incomes) ? p.incomes.filter(isLineItem) : [],
-      fixed: Array.isArray(p.fixed) ? p.fixed.filter(isLineItem) : [],
+      incomes: parseLines(p.incomes),
+      fixed: parseLines(p.fixed),
       savingsGoal: Number.isFinite(p.savingsGoal) ? p.savingsGoal : 0,
       improve: typeof p.improve === 'string' ? p.improve : '',
     }
   }
   const goals = Array.isArray(d.goals) ? d.goals.flatMap(parseGoal) : []
-  return { version: 1, expenses, months, goals }
+  return { version: 1, expenses, months, goals, settings: parseSettings(d.settings) }
 }
 
 function parseGoal(raw: unknown): Goal[] {
@@ -96,6 +117,8 @@ interface Store {
   deleteGoal: (id: string) => void
   addContribution: (goalId: string, c: Omit<Contribution, 'id'>) => void
   deleteContribution: (goalId: string, contributionId: string) => void
+  setProSettings: (pro: ProSettings) => void
+  setReviewSeen: (key: string) => void
 }
 
 const StoreContext = createContext<Store | null>(null)
@@ -169,6 +192,14 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     [],
   )
 
+  const setProSettings = useCallback<Store['setProSettings']>((pro) => {
+    setData((d) => ({ ...d, settings: { ...d.settings, pro } }))
+  }, [])
+
+  const setReviewSeen = useCallback<Store['setReviewSeen']>((key) => {
+    setData((d) => ({ ...d, settings: { ...d.settings, reviewSeen: key } }))
+  }, [])
+
   const value = useMemo(
     () => ({
       data,
@@ -184,6 +215,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       deleteGoal,
       addContribution,
       deleteContribution,
+      setProSettings,
+      setReviewSeen,
     }),
     [
       data,
@@ -199,6 +232,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       deleteGoal,
       addContribution,
       deleteContribution,
+      setProSettings,
+      setReviewSeen,
     ],
   )
 

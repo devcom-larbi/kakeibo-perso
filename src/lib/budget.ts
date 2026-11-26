@@ -1,8 +1,31 @@
 import { daysInMonth, firstDayOfMonth, monthKeyOf, parseISODate, shiftMonth, toISODate } from './dates'
-import { CATEGORY_IDS, emptyPlan, type AppData, type CategoryId, type Expense, type LineItem, type MonthPlan } from './types'
+import {
+  ACTIVITIES,
+  CATEGORY_IDS,
+  DEFAULT_PRO,
+  emptyPlan,
+  type AppData,
+  type CategoryId,
+  type Expense,
+  type LineItem,
+  type MonthPlan,
+  type ProSettings,
+} from './types'
 
 export function sumItems(items: LineItem[]): number {
   return items.reduce((total, item) => total + item.amount, 0)
+}
+
+/** Pourcentage total retenu sur le chiffre d'affaires, pour 10 000 (cotisations + impôt libératoire). */
+export function proRate(pro: ProSettings | null): number {
+  const p = pro ?? DEFAULT_PRO
+  const activity = ACTIVITIES.find((a) => a.id === p.activity)
+  return p.rate + (p.liberatoire && activity ? activity.liberatoire : 0)
+}
+
+/** Ce que l'URSSAF prendra sur une somme encaissée par ton activité. */
+export function contributionsOn(amount: number, pro: ProSettings | null): number {
+  return Math.round((amount * proRate(pro)) / 10000)
 }
 
 export function getPlan(data: AppData, key: string): MonthPlan {
@@ -29,14 +52,20 @@ export function totalsByCategory(expenses: Expense[]): Record<CategoryId, number
 
 export interface MonthSummary {
   income: number
+  /** Part des revenus qui vient de ton activité */
+  proIncome: number
+  /** Cotisations URSSAF (et impôt libératoire) à prévoir sur proIncome */
+  contributions: number
   fixed: number
+  /** Part des charges fixes liée à ton activité */
+  proFixed: number
   savingsGoal: number
-  /** Revenus − charges fixes − épargne visée */
+  /** Revenus − cotisations − charges fixes − épargne visée */
   available: number
   spent: number
   /** Disponible − dépensé (négatif = dépassement) */
   remaining: number
-  /** Revenus − charges fixes − dépensé */
+  /** Revenus − cotisations − charges fixes − dépensé */
   actualSavings: number
   byCategory: Record<CategoryId, number>
 }
@@ -45,17 +74,23 @@ export function monthSummary(data: AppData, key: string): MonthSummary {
   const plan = getPlan(data, key)
   const expenses = expensesOfMonth(data, key)
   const income = sumItems(plan.incomes)
+  const proIncome = sumItems(plan.incomes.filter((i) => i.pro))
+  const contributions = contributionsOn(proIncome, data.settings.pro)
   const fixed = sumItems(plan.fixed)
-  const available = income - fixed - plan.savingsGoal
+  const proFixed = sumItems(plan.fixed.filter((i) => i.pro))
+  const available = income - contributions - fixed - plan.savingsGoal
   const spent = expenses.reduce((t, e) => t + e.amount, 0)
   return {
     income,
+    proIncome,
+    contributions,
     fixed,
+    proFixed,
     savingsGoal: plan.savingsGoal,
     available,
     spent,
     remaining: available - spent,
-    actualSavings: income - fixed - spent,
+    actualSavings: income - contributions - fixed - spent,
     byCategory: totalsByCategory(expenses),
   }
 }

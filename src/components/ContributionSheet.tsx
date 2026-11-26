@@ -5,6 +5,8 @@ import { formatMoney, parseMoney } from '../lib/money'
 import { remainingFor, savedFor } from '../lib/goals'
 import { todayISO } from '../lib/dates'
 import { useStore } from '../store'
+import { feedback } from '../lib/feedback'
+import { useShake } from './useShake'
 
 interface ContributionSheetProps {
   goal: Goal
@@ -20,21 +22,39 @@ export function ContributionSheet({ goal, mode, onClose }: ContributionSheetProp
   const [error, setError] = useState('')
   const saved = savedFor(goal)
   const withdraw = mode === 'withdraw'
+  const [amountRef, shakeAmount] = useShake<HTMLLabelElement>()
+  const [errorRef, shakeError] = useShake<HTMLParagraphElement>()
+
+  const fail = (message: string, onAmount = false) => {
+    setError(message)
+    shakeError()
+    if (onAmount) shakeAmount()
+  }
 
   const submit = (e: FormEvent) => {
     e.preventDefault()
     const cents = parseMoney(amount)
-    if (cents === null || cents <= 0) return setError('Indique un montant supérieur à 0, par exemple 50.')
-    if (withdraw && cents > saved) return setError(`Tu ne peux pas retirer plus que les ${formatMoney(saved)} mis de côté.`)
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return setError('Choisis une date.')
+    if (cents === null || cents <= 0) return fail('Indique un montant supérieur à 0, par exemple 50.', true)
+    if (withdraw && cents > saved) return fail(`Tu ne peux pas retirer plus que les ${formatMoney(saved)} mis de côté.`, true)
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return fail('Choisis une date.')
     addContribution(goal.id, { amount: withdraw ? -cents : cents, date, note: note.trim() })
+    if (!withdraw && saved < goal.target && saved + cents >= goal.target) {
+      feedback.emit({ kind: 'hanko', title: 'Objectif atteint', detail: goal.name })
+    } else {
+      feedback.emit({
+        kind: 'toast',
+        title: withdraw ? `${formatMoney(cents)} retirés` : `${formatMoney(cents)} mis de côté`,
+        detail: goal.name,
+        tone: withdraw ? 'neutral' : 'good',
+      })
+    }
     onClose()
   }
 
   return (
     <Sheet title={withdraw ? `Retirer de « ${goal.name} »` : `Mettre de côté pour « ${goal.name} »`} onClose={onClose}>
       <form className="expense-form" onSubmit={submit} noValidate>
-        <label className="amount-field">
+        <label className="amount-field" ref={amountRef}>
           <span className="visually-hidden">Montant en euros</span>
           <input
             type="text"
@@ -77,7 +97,7 @@ export function ContributionSheet({ goal, mode, onClose }: ContributionSheetProp
         </div>
 
         {error && (
-          <p className="form-error" role="alert">
+          <p className="form-error" role="alert" ref={errorRef}>
             {error}
           </p>
         )}

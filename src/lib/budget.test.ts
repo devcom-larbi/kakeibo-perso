@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { monthSummary, planFromPrevious, weeklyBreakdown, weeksOfMonth } from './budget'
+import { contributionsOn, monthSummary, planFromPrevious, proRate, weeklyBreakdown, weeksOfMonth } from './budget'
 import { parseMoney } from './money'
 import { ofMonth } from './dates'
 import type { AppData, Expense } from './types'
@@ -16,6 +16,7 @@ const expense = (date: string, amount: number, category: Expense['category'] = '
 const data: AppData = {
   version: 1,
   goals: [],
+  settings: { pro: null },
   months: {
     '2026-11': {
       incomes: [{ id: 'a', label: 'Salaire', amount: 210000 }],
@@ -113,5 +114,56 @@ describe('ofMonth', () => {
     expect(ofMonth('2026-10')).toBe("d'octobre")
     expect(ofMonth('2026-11')).toBe('de novembre')
     expect(ofMonth('2026-04')).toBe("d'avril")
+  })
+})
+
+describe('activité pro (micro-entreprise)', () => {
+  const pro: AppData = {
+    ...data,
+    settings: { pro: { activity: 'bic', rate: 2120, liberatoire: false } },
+    months: {
+      '2026-11': {
+        incomes: [
+          { id: 'a', label: 'Salaire', amount: 150000 },
+          { id: 'p', label: 'Mission logo', amount: 3000, pro: true },
+          { id: 'q', label: 'Site vitrine', amount: 80000, pro: true },
+        ],
+        fixed: [
+          { id: 'b', label: 'Loyer', amount: 65000 },
+          { id: 'c', label: 'Canva Pro', amount: 1199, pro: true, catalogId: 'canva' },
+        ],
+        savingsGoal: 10000,
+        improve: '',
+      },
+    },
+  }
+
+  it('calcule ce que tu devras sur 30 € encaissés', () => {
+    expect(contributionsOn(3000, pro.settings.pro)).toBe(636) // 21,2 %
+  })
+
+  it('ajoute le versement libératoire quand il est coché', () => {
+    expect(proRate({ activity: 'bnc', rate: 2560, liberatoire: true })).toBe(2780)
+    expect(proRate({ activity: 'perso', rate: 1800, liberatoire: true })).toBe(1800)
+  })
+
+  it('utilise le taux BNC tant que l’activité n’est pas choisie', () => {
+    expect(contributionsOn(10000, null)).toBe(2560)
+  })
+
+  it('retire les cotisations du disponible du mois', () => {
+    const s = monthSummary(pro, '2026-11')
+    expect(s.income).toBe(233000)
+    expect(s.proIncome).toBe(83000)
+    expect(s.contributions).toBe(17596) // 21,2 % de 830 €
+    expect(s.proFixed).toBe(1199)
+    // 2 330 − 175,96 − 661,99 − 100 = 1 392,05 €
+    expect(s.available).toBe(139205)
+  })
+
+  it('garde le marquage pro en reprenant le mois précédent', () => {
+    const plan = planFromPrevious(pro, '2026-12')
+    expect(plan?.incomes.filter((i) => i.pro)).toHaveLength(2)
+    expect(plan?.fixed[1].catalogId).toBe('canva')
   })
 })

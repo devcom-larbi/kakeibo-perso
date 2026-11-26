@@ -4,7 +4,7 @@ import { parseAppData, useStore } from '../store'
 import { emptyData } from '../lib/types'
 import { todayISO } from '../lib/dates'
 
-export function SettingsSheet({ onClose }: { onClose: () => void }) {
+export function SettingsSheet({ onClose, onOpenActivity }: { onClose: () => void; onOpenActivity: () => void }) {
   const { data, replaceAll } = useStore()
   const fileRef = useRef<HTMLInputElement>(null)
   const [message, setMessage] = useState('')
@@ -38,6 +38,9 @@ export function SettingsSheet({ onClose }: { onClose: () => void }) {
   return (
     <Sheet title="Réglages" onClose={onClose}>
       <div className="settings">
+        <button type="button" className="secondary-button" onClick={onOpenActivity}>
+          Mon activité pro et cotisations URSSAF
+        </button>
         <p className="settings-note">
           Tes données restent sur cet appareil, rien n'est envoyé en ligne. Télécharge une sauvegarde de temps en temps
           pour ne rien perdre si tu changes de téléphone.

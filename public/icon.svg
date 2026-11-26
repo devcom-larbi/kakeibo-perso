@@ -1,14 +1,29 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-  <rect width="512" height="512" rx="96" fill="#24365C"/>
-  <rect x="112" y="96" width="288" height="320" rx="18" fill="#F2F4F7"/>
-  <g stroke="#C9D2DE" stroke-width="8">
-    <line x1="144" y1="176" x2="368" y2="176"/>
-    <line x1="144" y1="224" x2="368" y2="224"/>
-    <line x1="144" y1="272" x2="368" y2="272"/>
+  <defs>
+    <linearGradient id="ciel" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#2a1a1a"/>
+      <stop offset="0.5" stop-color="#5d2923"/>
+      <stop offset="1" stop-color="#331918"/>
+    </linearGradient>
+    <linearGradient id="soleil" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ff9373"/>
+      <stop offset="0.52" stop-color="#f15a43"/>
+      <stop offset="1" stop-color="#af3229"/>
+    </linearGradient>
+    <clipPath id="disque"><circle cx="300" cy="200" r="118"/></clipPath>
+  </defs>
+  <rect width="512" height="512" rx="104" fill="url(#ciel)"/>
+  <g clip-path="url(#disque)">
+    <rect x="182" y="82" width="236" height="236" fill="url(#soleil)"/>
+    <g fill="#5d271f" opacity="0.28">
+      <rect x="182" y="226" width="236" height="5"/>
+      <rect x="182" y="246" width="236" height="6"/>
+      <rect x="182" y="268" width="236" height="7"/>
+      <rect x="182" y="291" width="236" height="9"/>
+    </g>
   </g>
-  <rect x="144" y="320" width="84" height="48" fill="#4A78C2"/>
-  <rect x="228" y="320" width="52" height="48" fill="#B4477A"/>
-  <rect x="280" y="320" width="32" height="48" fill="#5F8A3A"/>
-  <rect x="312" y="320" width="24" height="48" fill="#C8922A"/>
-  <rect x="144" y="128" width="96" height="16" rx="8" fill="#24365C"/>
+  <path d="M0 330 L120 270 L190 300 L262 214 L300 194 L338 216 L400 290 L512 260 L512 512 L0 512 Z" fill="#78382e"/>
+  <path d="M0 400 L130 380 L210 318 L262 262 L300 238 L338 264 L392 330 L512 372 L512 512 L0 512 Z" fill="#281d20"/>
+  <path d="M262 262 L300 238 L338 264 L326 270 L316 262 L304 276 L292 262 L280 274 Z" fill="#e9a18a"/>
+  <path d="M0 448 L150 420 L250 452 L360 414 L512 430 L512 512 L0 512 Z" fill="#21191a"/>
 </svg>

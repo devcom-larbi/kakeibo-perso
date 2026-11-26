@@ -1,19 +1,20 @@
-import { useState } from 'react'
 import { useStore } from '../store'
 import { expensesOfMonth } from '../lib/budget'
 import { CATEGORIES, type CategoryId, type Expense } from '../lib/types'
 import { formatMoney } from '../lib/money'
-import { dayLabel, monthName, ofMonth } from '../lib/dates'
+import { dayLabel, monthName } from '../lib/dates'
 import { ExpenseRow } from '../components/ExpenseRow'
+import { Rolling } from '../components/Rolling'
 
 interface ExpensesScreenProps {
   monthKey: string
+  filter: CategoryId | 'all'
+  onFilter: (f: CategoryId | 'all') => void
   onOpenExpense: (e: Expense) => void
 }
 
-export function ExpensesScreen({ monthKey, onOpenExpense }: ExpensesScreenProps) {
+export function ExpensesScreen({ monthKey, filter, onFilter: setFilter, onOpenExpense }: ExpensesScreenProps) {
   const { data } = useStore()
-  const [filter, setFilter] = useState<CategoryId | 'all'>('all')
   const all = expensesOfMonth(data, monthKey)
   const shown = filter === 'all' ? all : all.filter((e) => e.category === filter)
   const total = shown.reduce((t, e) => t + e.amount, 0)
@@ -27,10 +28,10 @@ export function ExpensesScreen({ monthKey, onOpenExpense }: ExpensesScreenProps)
 
   return (
     <div className="screen">
-      <header className="screen-head">
-        <h1 className="screen-title">Dépenses {ofMonth(monthKey)}</h1>
+      <header className="screen-head" data-kanji="支出">
+        <h1 className="screen-title">Dépenses</h1>
         <p className="screen-total">
-          {formatMoney(total)}
+          <Rolling value={total} id="expenses-total" />
           <span>
             {shown.length} {shown.length > 1 ? 'dépenses' : 'dépense'}
           </span>

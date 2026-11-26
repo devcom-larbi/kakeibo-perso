@@ -10,10 +10,12 @@ interface ExpenseRowProps {
 
 export function ExpenseRow({ expense, onOpen, showDate }: ExpenseRowProps) {
   const cat = categoryById(expense.category)
+  // Ajoutée il y a quelques secondes : la ligne s'éclaire un instant
+  const isNew = Date.now() - expense.createdAt < 4000
   return (
-    <li>
+    <li className={isNew ? 'is-new' : undefined}>
       <button type="button" className="ledger-row" onClick={() => onOpen(expense)}>
-        <span className="ledger-mark" style={{ background: `var(--cat-${cat.id})` }} aria-hidden="true" />
+        <span className="ledger-mark" style={{ background: `var(--cat-${cat.id})`, color: `var(--cat-${cat.id})` }} aria-hidden="true" />
         <span className="ledger-text">
           <span className="ledger-title">{expense.note || cat.label}</span>
           <span className="ledger-sub">
