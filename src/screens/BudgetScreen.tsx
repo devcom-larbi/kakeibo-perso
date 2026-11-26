@@ -3,6 +3,7 @@ import { useStore } from '../store'
 import { getPlan, hasPlan, monthSummary, sumItems } from '../lib/budget'
 import { newId, type LineItem } from '../lib/types'
 import { formatMoney } from '../lib/money'
+import { activeGoals, totalMonthlyNeeded } from '../lib/goals'
 import { ofMonth, shiftMonth } from '../lib/dates'
 import { MoneyInput } from '../components/MoneyInput'
 import { IconClose, IconPlus } from '../components/icons'
@@ -69,12 +70,14 @@ function LineList({ title, hint, items, addLabel, placeholder, onChange }: LineL
   )
 }
 
-export function BudgetScreen({ monthKey }: { monthKey: string }) {
+export function BudgetScreen({ monthKey, onGoToGoals }: { monthKey: string; onGoToGoals: () => void }) {
   const { data, updatePlan, copyPreviousPlan } = useStore()
   const plan = getPlan(data, monthKey)
   const summary = monthSummary(data, monthKey)
   const prevKey = shiftMonth(monthKey, -1)
   const canCopy = !hasPlan(data, monthKey) && hasPlan(data, prevKey)
+  const hasGoals = activeGoals(data.goals).length > 0
+  const goalsPerMonth = totalMonthlyNeeded(data.goals, monthKey)
 
   return (
     <div className="screen">
@@ -126,6 +129,29 @@ export function BudgetScreen({ monthKey }: { monthKey: string }) {
           />
         </div>
         <p className="block-hint">Mets-la de côté dès le début du mois, comme une charge.</p>
+        {hasGoals && (
+          <div className="goals-hint">
+            <p>
+              {goalsPerMonth > 0 ? (
+                <>
+                  Tes objectifs demandent <strong>{formatMoney(goalsPerMonth)}</strong> par mois pour tenir leurs dates.
+                </>
+              ) : (
+                <>Tes objectifs n'ont pas de date : choisis librement ce que tu mets de côté.</>
+              )}
+            </p>
+            <div className="goals-hint-actions">
+              {goalsPerMonth > 0 && plan.savingsGoal !== goalsPerMonth && (
+                <button type="button" className="secondary-button small" onClick={() => updatePlan(monthKey, { savingsGoal: goalsPerMonth })}>
+                  Viser {formatMoney(goalsPerMonth)}
+                </button>
+              )}
+              <button type="button" className="text-button" onClick={onGoToGoals}>
+                Voir mes objectifs
+              </button>
+            </div>
+          </div>
+        )}
       </section>
 
       <section className="block" aria-labelledby="calc-title">

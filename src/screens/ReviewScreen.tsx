@@ -2,6 +2,7 @@ import { useStore } from '../store'
 import { getPlan, hasPlan, monthSummary } from '../lib/budget'
 import { CATEGORIES } from '../lib/types'
 import { formatMoney } from '../lib/money'
+import { savedInMonth } from '../lib/goals'
 import { currentMonthKey, monthName, ofMonth, shiftMonth } from '../lib/dates'
 
 export function ReviewScreen({ monthKey }: { monthKey: string }) {
@@ -63,6 +64,11 @@ export function ReviewScreen({ monthKey }: { monthKey: string }) {
         <li className="question">
           <h2>Combien voulais-tu épargner ?</h2>
           <p className="answer">{formatMoney(s.savingsGoal)}</p>
+          {data.goals.length > 0 && (
+            <p className="answer-detail">
+              Mis de côté pour tes objectifs ce mois-ci : {formatMoney(savedInMonth(data.goals, monthKey))}.
+            </p>
+          )}
         </li>
 
         <li className="question">

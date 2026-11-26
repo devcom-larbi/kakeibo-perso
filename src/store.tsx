@@ -1,5 +1,17 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
-import { emptyData, emptyPlan, newId, CATEGORY_IDS, type AppData, type Expense, type LineItem, type MonthPlan } from './lib/types'
+import {
+  emptyData,
+  emptyPlan,
+  newId,
+  CATEGORY_IDS,
+  GOAL_KINDS,
+  type AppData,
+  type Contribution,
+  type Expense,
+  type Goal,
+  type LineItem,
+  type MonthPlan,
+} from './lib/types'
 import { planFromPrevious } from './lib/budget'
 
 const STORAGE_KEY = 'kakeibo-perso:v1'
@@ -33,7 +45,31 @@ export function parseAppData(raw: unknown): AppData | null {
       improve: typeof p.improve === 'string' ? p.improve : '',
     }
   }
-  return { version: 1, expenses, months }
+  const goals = Array.isArray(d.goals) ? d.goals.flatMap(parseGoal) : []
+  return { version: 1, expenses, months, goals }
+}
+
+function parseGoal(raw: unknown): Goal[] {
+  const g = raw as Goal
+  if (!g || typeof g.id !== 'string' || typeof g.name !== 'string' || !Number.isFinite(g.target)) return []
+  const contributions = Array.isArray(g.contributions)
+    ? g.contributions.filter(
+        (c): c is Contribution =>
+          !!c && typeof c.id === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(c.date) && Number.isFinite(c.amount),
+      ).map((c) => ({ ...c, note: typeof c.note === 'string' ? c.note : '' }))
+    : []
+  return [
+    {
+      id: g.id,
+      name: g.name,
+      kind: GOAL_KINDS.some((k) => k.id === g.kind) ? g.kind : 'projet',
+      target: g.target,
+      deadline: typeof g.deadline === 'string' && /^\d{4}-\d{2}$/.test(g.deadline) ? g.deadline : null,
+      contributions,
+      doneAt: Number.isFinite(g.doneAt) ? g.doneAt : null,
+      createdAt: Number(g.createdAt) || 0,
+    },
+  ]
 }
 
 function load(): AppData {
@@ -55,6 +91,11 @@ interface Store {
   updatePlan: (key: string, patch: Partial<MonthPlan>) => void
   copyPreviousPlan: (key: string) => boolean
   replaceAll: (data: AppData) => void
+  addGoal: (goal: Pick<Goal, 'name' | 'kind' | 'target' | 'deadline'>, initial: Omit<Contribution, 'id'> | null) => void
+  updateGoal: (id: string, patch: Partial<Omit<Goal, 'id' | 'contributions'>>) => void
+  deleteGoal: (id: string) => void
+  addContribution: (goalId: string, c: Omit<Contribution, 'id'>) => void
+  deleteContribution: (goalId: string, contributionId: string) => void
 }
 
 const StoreContext = createContext<Store | null>(null)
@@ -100,9 +141,65 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
   const replaceAll = useCallback<Store['replaceAll']>((next) => setData(next), [])
 
+  const mapGoal = (id: string, fn: (g: Goal) => Goal) =>
+    setData((d) => ({ ...d, goals: d.goals.map((g) => (g.id === id ? fn(g) : g)) }))
+
+  const addGoal = useCallback<Store['addGoal']>((goal, initial) => {
+    const contributions = initial && initial.amount !== 0 ? [{ ...initial, id: newId() }] : []
+    setData((d) => ({
+      ...d,
+      goals: [...d.goals, { ...goal, id: newId(), contributions, doneAt: null, createdAt: Date.now() }],
+    }))
+  }, [])
+
+  const updateGoal = useCallback<Store['updateGoal']>((id, patch) => mapGoal(id, (g) => ({ ...g, ...patch })), [])
+
+  const deleteGoal = useCallback<Store['deleteGoal']>((id) => {
+    setData((d) => ({ ...d, goals: d.goals.filter((g) => g.id !== id) }))
+  }, [])
+
+  const addContribution = useCallback<Store['addContribution']>(
+    (goalId, c) => mapGoal(goalId, (g) => ({ ...g, contributions: [...g.contributions, { ...c, id: newId() }] })),
+    [],
+  )
+
+  const deleteContribution = useCallback<Store['deleteContribution']>(
+    (goalId, contributionId) =>
+      mapGoal(goalId, (g) => ({ ...g, contributions: g.contributions.filter((c) => c.id !== contributionId) })),
+    [],
+  )
+
   const value = useMemo(
-    () => ({ data, saveError, addExpense, updateExpense, deleteExpense, updatePlan, copyPreviousPlan, replaceAll }),
-    [data, saveError, addExpense, updateExpense, deleteExpense, updatePlan, copyPreviousPlan, replaceAll],
+    () => ({
+      data,
+      saveError,
+      addExpense,
+      updateExpense,
+      deleteExpense,
+      updatePlan,
+      copyPreviousPlan,
+      replaceAll,
+      addGoal,
+      updateGoal,
+      deleteGoal,
+      addContribution,
+      deleteContribution,
+    }),
+    [
+      data,
+      saveError,
+      addExpense,
+      updateExpense,
+      deleteExpense,
+      updatePlan,
+      copyPreviousPlan,
+      replaceAll,
+      addGoal,
+      updateGoal,
+      deleteGoal,
+      addContribution,
+      deleteContribution,
+    ],
   )
 
   return <StoreContext.Provider value={value}>{children}</StoreContext.Provider>

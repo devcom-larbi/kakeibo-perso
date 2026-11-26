@@ -15,6 +15,7 @@ const expense = (date: string, amount: number, category: Expense['category'] = '
 
 const data: AppData = {
   version: 1,
+  goals: [],
   months: {
     '2026-11': {
       incomes: [{ id: 'a', label: 'Salaire', amount: 210000 }],

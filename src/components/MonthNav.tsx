@@ -5,13 +5,15 @@ interface MonthNavProps {
   monthKey: string
   onChange: (key: string) => void
   onOpenSettings: () => void
+  /** Sur la page Objectifs, le mois n'a pas d'importance */
+  hideMonth?: boolean
 }
 
-export function MonthNav({ monthKey, onChange, onOpenSettings }: MonthNavProps) {
+export function MonthNav({ monthKey, onChange, onOpenSettings, hideMonth }: MonthNavProps) {
   const isCurrent = monthKey === currentMonthKey()
   return (
     <div className="month-nav">
-      <div className="month-switch">
+      <div className="month-switch" hidden={hideMonth}>
         <button type="button" className="icon-button" onClick={() => onChange(shiftMonth(monthKey, -1))} aria-label="Mois précédent">
           <IconChevron dir="left" />
         </button>
@@ -23,7 +25,7 @@ export function MonthNav({ monthKey, onChange, onOpenSettings }: MonthNavProps) 
         </button>
       </div>
       <div className="month-actions">
-        {!isCurrent && (
+        {!isCurrent && !hideMonth && (
           <button
             type="button"
             className="today-button"

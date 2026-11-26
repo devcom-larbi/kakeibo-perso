@@ -71,3 +71,37 @@ export const IconClose = (p: IconProps) => (
     <path d="M6 6l12 12M18 6 6 18" />
   </svg>
 )
+
+export const IconGoal = (p: IconProps) => (
+  <svg {...base} {...p}>
+    <path d="M5 21V4" />
+    <path d="M5 4h11l-2 3.5L16 11H5" />
+  </svg>
+)
+
+export const IconPlane = (p: IconProps) => (
+  <svg {...base} {...p}>
+    <path d="M10.5 13.5 4 11l1.5-1.5 7 .5 4-4a1.8 1.8 0 0 1 2.5 2.5l-4 4 .5 7L14 21l-2.5-6.5" />
+    <path d="m7 17-2 1 1-2" />
+  </svg>
+)
+
+export const IconBag = (p: IconProps) => (
+  <svg {...base} {...p}>
+    <path d="M5 8h14l-1 12H6L5 8Z" />
+    <path d="M9 10V6a3 3 0 0 1 6 0v4" />
+  </svg>
+)
+
+export const IconShield = (p: IconProps) => (
+  <svg {...base} {...p}>
+    <path d="M12 3 5 6v5c0 4.5 3 8 7 10 4-2 7-5.5 7-10V6l-7-3Z" />
+    <path d="m9 12 2 2 4-4" />
+  </svg>
+)
+
+export const IconStar = (p: IconProps) => (
+  <svg {...base} {...p}>
+    <path d="m12 4 2.4 4.9 5.4.8-3.9 3.8.9 5.4-4.8-2.6-4.8 2.6.9-5.4-3.9-3.8 5.4-.8L12 4Z" />
+  </svg>
+)
